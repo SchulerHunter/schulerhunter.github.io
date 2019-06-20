@@ -29,22 +29,24 @@
     <script src="https://unpkg.com/vue"></script>
     <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
     <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+    <script src="https://kit.fontawesome.com/5f02104efa.js"></script>
   </head>
   <body>
     <div id="main">
       <div id="header">
-        <b-navbar toggleable="lg" type="dark" variant="info">
+        <b-navbar toggleable="lg" type="dark" variant="dark">
           <b-navbar-brand href="/">Icon Here</b-navbar-brand>
           <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
           <b-collapse id="nav-collapse" is-nav>
-            <b-navbar-nav>
-              <b-nav-item class="mx-auto">
-                Hunter The .Dev
-              </b-nav-item>
+            <b-navbar-nav class="mx-auto">
+              <b-nav-text>
+                <h3>Hunter The .Dev</h3>
+              </b-nav-text>
             </b-navbar-nav>
-            <b-navbar-nav class="ml-auto">
+            <b-navbar-nav>
               <b-nav-item href="/">Home</b-nav-item>
-              <b-nav-item-dropdown disabled class="dropdown" text="About Me" href="/About">
+              <b-nav-item-dropdown class="dropdown" text="Learn More">
+                <b-dropdown-item href="/About">About Me</b-dropdown-item>
                 <b-dropdown-item href="/Resume">Resume</b-dropdown-item>
               </b-nav-item-dropdown>
               <b-nav-item href="/Timeline">Timeline</b-nav-item>
@@ -54,8 +56,34 @@
         </b-navbar>
       </div>
       <div id="body">
+        This is just a sample body to seperate the header from the footer
       </div>
       <div id="footer">
+        <b-navbar type="dark" variant="dark">
+          <b-navbar-nav class="mx-auto">
+            <b-nav-item href="https://www.facebook.com/hunter.schuler.9">
+              <i class="fab fa-facebook-square fa-lg"></i>
+            </b-nav-item>
+            <b-nav-item href="https://www.linkedin.com/in/hunter-schuler/">
+              <i class="fab fa-linkedin fa-lg"></i>
+            </b-nav-item>
+            <b-nav-item href="https://github.com/SchulerHunter">
+              <i class="fab fa-github-square fa-lg"></i>
+            </b-nav-item>
+            <b-nav-item href="https://www.instagram.com/hschuler14/">
+              <i class="fab fa-instagram fa-lg"></i>
+            </b-nav-item>
+            <b-nav-item href="mailto:Hunter@HunterThe.Dev">
+              <i class="fas fa-envelope-square fa-lg"></i>
+            </b-nav-item>
+          </b-navbar-nav>
+          <b-navbar-nav>
+            <b-navbar-brand href="/">Icon Here</b-navbar-brand>
+            <b-nav-text>
+              <sub>Est. 2019</sub>
+            </b-nav-text>
+          </b-navbar-nav>
+        </b-navbar>
       </div>
     </div>
   </body>

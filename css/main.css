@@ -5,3 +5,6 @@
     /*Without this, clicking will make it sticky*/
     pointer-events: none;
 }
+.navbar-logo {
+  width: 200px;
+}
