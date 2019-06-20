@@ -58,20 +58,14 @@
       <div id="footer">
       </div>
     </div>
-
-    <!-- Start running your app -->
-    <script>
-      window.app = new Vue({
-        el: '#app',
-        data: {
-          name: ''
-        },
-        computed: {
-          showAlert() {
-            return this.name.length > 4 ? true : false
-          }
-        }
-      })
-    </script>
   </body>
 </html>
+
+<script>
+  window.app = new Vue({
+    el: '#main',
+    data: {
+      name: ''
+    },
+  })
+</script>
