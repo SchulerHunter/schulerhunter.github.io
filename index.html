@@ -19,6 +19,11 @@
       rel="stylesheet"
       href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"
     />
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="/css/main.css"
+    />
 
     <!-- Required scripts -->
     <script src="https://unpkg.com/vue"></script>
@@ -26,7 +31,6 @@
     <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
   </head>
   <body>
-    <!-- Our application root element -->
     <div id="main">
       <div id="header">
         <b-navbar toggleable="lg" type="dark" variant="info">
@@ -54,20 +58,14 @@
       <div id="footer">
       </div>
     </div>
-
-    <!-- Start running your app -->
-    <script>
-      window.app = new Vue({
-        el: '#app',
-        data: {
-          name: ''
-        },
-        computed: {
-          showAlert() {
-            return this.name.length > 4 ? true : false
-          }
-        }
-      })
-    </script>
   </body>
 </html>
+
+<script>
+  window.app = new Vue({
+    el: '#main',
+    data: {
+      name: ''
+    },
+  })
+</script>
