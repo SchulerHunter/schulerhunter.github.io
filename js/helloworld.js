@@ -51,16 +51,20 @@ function printCode() {
     // Run interpreter on that file
     // Show "hello world" in output below
     let keys = Object.keys(helloWorld);
-    index = Math.round(Math.random() * keys.length - 1);
+    let index = Math.round(Math.random() * keys.length - 1);
 
-    makeFile = "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
-    loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
+    let makeFile = "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
+    let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
     
     document.getElementById("helloWorld").innerText = newLineStart
     for(let i = 0; i < makeFile; i++) {
-        document.getElementById("helloWorld").innerText += makeFile[i]
+        ((strIndex) => {
+            setTimeout(() => {
+                document.getElementById("helloWorld").innerText += makeFile[strIndex];
+            }, 100 * i);
+        })(i);
     }
-    document.getElementById("helloWorld").innerText += "\nnewLineStart"
+    document.getElementById("helloWorld").innerText += "\n" + newLineStart
     for (let i = 0; i < loadFile; i++) {
         document.getElementById("helloWorld").innerText += makeFile[i]
     }
