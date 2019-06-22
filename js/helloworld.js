@@ -69,7 +69,7 @@ function writeCodeToHTML(code, destination) {
     for (let i = 0; i < code.length; i++) {
         ((strIndex) => {
             setTimeout(() => {
-                document.getElementById("helloWorld").innerText += code[strIndex];
+                document.getElementById(destination).innerText += code[strIndex];
             }, 100 * i)
         })(i);
     }
