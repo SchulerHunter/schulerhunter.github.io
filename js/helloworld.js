@@ -52,11 +52,17 @@ function printCode() {
     // Show "hello world" in output below
     let keys = Object.keys(helloWorld);
     index = Math.round(Math.random() * keys.length - 1);
-    document.getElementById("helloWorld").innerText = newLineStart + "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
-    
-    console.log(newLineStart+"echo ("+helloWorld[keys[index]][1]+") > helloWorld"+helloWorld[keys[index]][2])
-    console.log(newLineStart+helloWorld[keys[index]][0]+" helloWorld" + helloWorld[keys[index]][2])
 
-    for(let i = 0; i < helloWorld[keys[index]].length; i++) {
+    makeFile = newLineStart + "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
+    loadFile = newLineStart + helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
+
+    for(let i = 0; i < makeFile; i++) {
+        document.getElementById("helloWorld").innerText += makeFile[i]
+    }
+    document.getElementById("helloWorld").innerText += "\n"
+    for (let i = 0; i < loadFile; i++) {
+        document.getElementById("helloWorld").innerText += makeFile[i]
     }
 }
+
+printCode();
