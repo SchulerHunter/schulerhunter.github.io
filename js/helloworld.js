@@ -53,21 +53,18 @@ function printCode() {
     let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
 
     document.getElementById("helloWorld").innerText = newLineStart;
-    for(let i = 0; i < makeFile; i++) {
-        (function(strIndex){
-            setTimeout(function(){
-                document.getElementById("helloWorld").innerText += makeFile[strIndex];
-            }, 100 * i)
-        })(i);
-    }
-    document.getElementById("helloWorld").innerText += "\n" + newLineStart
-    for (let i = 0; i < loadFile; i++) {
+    writeCodeToHTML(makeFile);
+    document.getElementById("helloWorld").innerText += "\n" + newLineStart;
+    writeCodeToHTML(loadFile);
+}
+
+function writeCodeToHTML(code) {
+    for (let i = 0; i < code.length; i++) {
         (function (strIndex) {
             setTimeout(function () {
-                document.getElementById("helloWorld").innerText += loadFile[strIndex];
+                document.getElementById("helloWorld").innerText += code[strIndex];
             }, 100 * i)
         })(i);
     }
 }
-
 printCode();
