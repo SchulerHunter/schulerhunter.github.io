@@ -61,7 +61,7 @@ function printCode() {
         writeCodeToHTML(loadFile, "helloWorld") 
     }, (makeFile.length + newLineStart.length) * 100)
     setTimeout(() => {
-        writeCodeToHTML("Hello World", "interpreter")
+        document.getElementById('Interpreter'.innerText) = "Hello World"
     }, (makeFile.length + newLineStart.length + loadFile.length) * 100)
 }
 
