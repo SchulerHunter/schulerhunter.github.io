@@ -54,14 +54,14 @@ function printCode() {
 
     document.getElementById("helloWorld").innerText = newLineStart;
     writeCodeToHTML(makeFile);
-    document.getElementById("helloWorld").innerText += "\n" + newLineStart;
-    writeCodeToHTML(loadFile);
+    setTimeout(() => {() => {document.getElementById("helloWorld").innerText += "\n"+newLineStart;}}, makeFile.length*100)
+    setTimeout(() => {(loadFile) => { writeCodeToHTML(loadFile) }}, (makeFile.length+newLineStart.length+2)*10)
 }
 
 function writeCodeToHTML(code) {
     for (let i = 0; i < code.length; i++) {
-        (function (strIndex) {
-            setTimeout(function () {
+        ((strIndex) => {
+            setTimeout(() => {
                 document.getElementById("helloWorld").innerText += code[strIndex];
             }, 100 * i)
         })(i);
