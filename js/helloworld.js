@@ -54,11 +54,11 @@ function printCode() {
 
     document.getElementById("helloWorld").innerText = newLineStart;
     writeCodeToHTML(makeFile);
-    setTimeout(function() {
+    setTimeout(() => {
         document.getElementById("helloWorld").innerText += "\n" + newLineStart;
     }, makeFile.length*100)
-    setTimeout(function(code) {
-        writeCodeToHTML(code) 
+    setTimeout(() => {
+        writeCodeToHTML(loadFile) 
     }, (makeFile.length+newLineStart.length+2)*100)
 }
 
