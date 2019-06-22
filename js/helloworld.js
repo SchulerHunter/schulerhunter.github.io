@@ -41,7 +41,7 @@ helloWorld = {
 function printCode() {
     let keys = Object.keys(helloWorld);
     index = Math.round(Math.random() * keys.length - 1);
-    helloWorld[keys[index]].array.forEach(character => {
-        console.log(character);
-    });
+    for(let i = 0; i < helloWorld[keys[index]].length; i++) {
+        console.log(helloWorld[keys[index]][i])
+    }
 }
