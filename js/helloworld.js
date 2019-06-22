@@ -41,8 +41,6 @@ helloWorld = {
 function printCode() {
     let keys = Object.keys(helloWorld);
     index = Math.round(Math.random() * keys.length - 1);
-    console.log(helloWorld[keys[index]])
-    console.log(keys[index])
     for(let i = 0; i < helloWorld[keys[index]].length; i++) {
         console.log(helloWorld[keys[index]][i])
     }
