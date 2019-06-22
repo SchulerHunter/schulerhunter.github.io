@@ -1,6 +1,6 @@
 function printCode() {
     // Format: [interpreter, code, extension]
-    helloWorld = {
+    let helloWorld = {
         python: ['python', `print("Hello World")`, '.py'],
         ruby: ['IRB', `puts "Hello World"`, '.rb'],
         java:
@@ -45,14 +45,14 @@ function printCode() {
     </html>`, '.html'],
     }
 
-    newLineStart = "Hunter@HunterThe.Dev:~$ "
+    let newLineStart = "Hunter@HunterThe.Dev:~$ "
     // Echo file to helloWorld.ext
         // put ( type code, put )
     // Run interpreter on that file
     // Show "hello world" in output below
     let keys = Object.keys(helloWorld);
     index = Math.round(Math.random() * keys.length - 1);
-    console.log(newLineStart + "echo '" + helloWorld[key[index]][1] + "' > helloWorld" + helloWorld[key[index]][2])
+    console.log(newLineStart + "echo (" + helloWorld[key[index]][1] + ") > helloWorld" + helloWorld[key[index]][2])
     console.log(newLineStart + helloWorld[key[index]][0] + "hellowWorld" + helloWorld[key[index]][2])
 
     for(let i = 0; i < helloWorld[keys[index]].length; i++) {
