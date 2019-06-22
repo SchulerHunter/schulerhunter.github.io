@@ -53,13 +53,14 @@ function printCode() {
     let keys = Object.keys(helloWorld);
     index = Math.round(Math.random() * keys.length - 1);
 
-    makeFile = newLineStart + "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
-    loadFile = newLineStart + helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
-
+    makeFile = "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
+    loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
+    
+    document.getElementById("helloWorld").innerText = newLineStart
     for(let i = 0; i < makeFile; i++) {
         document.getElementById("helloWorld").innerText += makeFile[i]
     }
-    document.getElementById("helloWorld").innerText += "\n"
+    document.getElementById("helloWorld").innerText += "\nnewLineStart"
     for (let i = 0; i < loadFile; i++) {
         document.getElementById("helloWorld").innerText += makeFile[i]
     }
