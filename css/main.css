@@ -1,8 +1,8 @@
-.headerNav, .footerNav {
+.headerNav .footerNav {
   position: absolute;
 }
 
-.helloBody, .helloContainer {
+.helloBody .helloContainer {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
