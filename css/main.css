@@ -7,3 +7,8 @@
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
 }
+
+.terminal-prompt {
+  background-color: #222225;
+  color: #e8e9ed
+}

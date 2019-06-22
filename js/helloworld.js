@@ -53,16 +53,19 @@ function printCode() {
     let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
 
     document.getElementById("helloWorld").innerText = newLineStart;
-    writeCodeToHTML(makeFile);
+    writeCodeToHTML(makeFile, "helloWorld");
     setTimeout(() => {
         document.getElementById("helloWorld").innerText += "\n> " + newLineStart;
-    }, makeFile.length*100)
+    }, makeFile.length * 100)
     setTimeout(() => {
-        writeCodeToHTML(loadFile) 
-    }, (makeFile.length+newLineStart.length)*100)
+        writeCodeToHTML(loadFile, "helloWorld") 
+    }, (makeFile.length + newLineStart.length) * 100)
+    setTimeout(() => {
+        writeCodeToHTML("Hello World", "interpreter")
+    }, (makeFile.length + newLineStart.length + loadFile.length) * 100)
 }
 
-function writeCodeToHTML(code) {
+function writeCodeToHTML(code, destination) {
     for (let i = 0; i < code.length; i++) {
         ((strIndex) => {
             setTimeout(() => {
