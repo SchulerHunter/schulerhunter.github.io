@@ -11,24 +11,20 @@
     <!-- Required Stylesheets -->
     <link
       type="text/css"
-      rel="stylesheet"      
-      href="https://unpkg.com/terminal.css@0.6.6/dist/terminal.min.css" 
-    />
+      rel="stylesheet"
+      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
     <link
       type="text/css"
       rel="stylesheet"
-      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"
-    />
+      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
+    <link 
+      type="text/css" 
+      rel="stylesheet" 
+      href="css/terminal.css" />
     <link
       type="text/css"
       rel="stylesheet"
-      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"
-    />
-    <link
-      type="text/css"
-      rel="stylesheet"
-      href="/css/main.css"
-    />
+      href="css/main.css"/>
 
     <!-- Required scripts -->
     <script src="https://unpkg.com/vue"></script>
@@ -60,21 +56,23 @@
           </b-collapse>
         </b-navbar>
       </div>
-      <div class="helloBody" id="body">
-        <b-container class="helloContainer bg-dark m-0 p-0" fluid>
-          <b-row>
-            <b-col>
-              <div id="helloWorld" class="terminal-prompt">
+      <div class="helloBody body" id="body">
+          <b-row class="m-0 terminalRow">
+            <b-col class="p-0">
+              <b-jumbotron class="terminalContainer" bg-variant="dark" text-variant="light" border-variant="dark">
+                <div id="helloWorld" class="terminal-prompt">
+              </b-jumbotron>
               </div>
             </b-col>
           </b-row>
-          <b-row>
-            <b-col>
-              <div id="interpreter" class="interpreter">
+          <b-row class="m-0 interpreterRow">
+            <b-col class="p-0">
+              <b-jumbotron class="interpreterContainer" bg-variant="dark" text-variant="light" border-variant="dark">
+                <div id="interpreter" class="interpreter">
+              </b-jumbotron>
               </div>
             </b-col>
           </b-row>
-        </b-container>
       </div>
       <div class="footerNav" id="footer">
         <b-navbar type="dark" variant="dark">

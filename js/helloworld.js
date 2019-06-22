@@ -6,8 +6,8 @@ function printCode() {
         java:
             ['java', 
     `class HelloWorld {
-        \tstatic public void main(String args[]) {
-            \t\tSystem.out.println("Hello World");
+        static public void main(String args[]) {
+            System.out.println("Hello World");
         }
     }`, '.java'],
         javascript: ['node', `console.log("Hello World")`, '.js'],
@@ -15,20 +15,20 @@ function printCode() {
             ['g++', 
     `#include <iostream>
     int main() {
-        \tstd::cout << "Hello World" << std::endl;
+        std::cout << "Hello World" << std::endl;
     }`, '.cpp'],
         c:
             ['gcc', 
     `#include <stdio.h>
     #include <stdlib.h>
     int main(void) {
-        \tputs("Hello World");
-        \treturn EXIT_SUCCESS;
+        puts("Hello World");
+        return EXIT_SUCCESS;
     }`, '.c'],
         css:
             ['npm run build-css', 
     `body:before {
-        \tcontent: "Hello World";
+        content: "Hello World";
     }`, '.css'],
         shell: ['echo', `Hello World`, '.sh'],
         sql: ['mysql', `SELECT "Hello World";`, '.sql'],
@@ -36,12 +36,12 @@ function printCode() {
         html:
             ['w3m -dump', 
     `<html>
-        \t<head>
-            \t\t<title> Hello World </title>
-        \t</head>
-        \t<body>
-            \t\t<p> Hello World </p>
-        \t</body>
+        <head>
+            <title> Hello World </title>
+        </head>
+        <body>
+            <p> Hello World </p>
+        </body>
     </html>`, '.html'],
     }
 
