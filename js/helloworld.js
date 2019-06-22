@@ -49,7 +49,7 @@ function printCode() {
     let keys = Object.keys(helloWorld);
     let index = Math.round(Math.random() * keys.length - 1);
 
-    let makeFile = "echo (\n" + helloWorld[keys[index]][1] + "\n) > helloWorld" + helloWorld[keys[index]][2];
+    let makeFile = "echo (\n" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
     let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
 
     document.getElementById("helloWorld").innerText = newLineStart;
@@ -61,7 +61,7 @@ function printCode() {
         writeCodeToHTML(loadFile, "helloWorld") 
     }, (makeFile.length + newLineStart.length) * 100)
     setTimeout(() => {
-        document.getElementById('interpreter'.innerText) = "Hello World"
+        document.getElementById('interpreter').innerText = "Hello World"
     }, (makeFile.length + newLineStart.length + loadFile.length) * 100)
 }
 
