@@ -1,14 +1,14 @@
-.headerNav .footerNav {
+.headerNav, .footerNav {
   position: absolute;
 }
 
-.helloBody .helloContainer {
+.helloBody, .helloContainer {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
 }
 
-.terminal-prompt .interpreter {
+.terminal-prompt, .interpreter {
   background-color: #222225;
   color: #e8e9ed
 }
