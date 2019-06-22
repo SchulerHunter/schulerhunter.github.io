@@ -12,30 +12,30 @@
     <link
       type="text/css"
       rel="stylesheet"
-      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"
-    />
+      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
     <link
       type="text/css"
       rel="stylesheet"
-      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"
-    />
+      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
+    <link 
+      type="text/css" 
+      rel="stylesheet" 
+      href="css/terminal.css" />
     <link
       type="text/css"
       rel="stylesheet"
-      href="/css/main.css"
-    />
+      href="css/main.css"/>
 
     <!-- Required scripts -->
     <script src="https://unpkg.com/vue"></script>
     <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
     <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
     <script src="https://kit.fontawesome.com/5f02104efa.js"></script>
-    <script src="/js/helloworld.js"></script>
   </head>
   <body>
     <div id="main">
-      <div id="header">
-        <b-navbar toggleable="lg" type="dark" variant="dark">
+      <div class="headerNav" id="header">
+        <b-navbar class="headerNav" toggleable="lg" type="dark" variant="dark">
           <b-navbar-brand href="/">Icon Here</b-navbar-brand>
           <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
           <b-collapse id="nav-collapse" is-nav>
@@ -56,21 +56,25 @@
           </b-collapse>
         </b-navbar>
       </div>
-      <div id="body">
-        <b-container fluid class="bg-dark m-0">
-          <b-row>
-            <b-col>
-              This is where the code goes
+      <div class="helloBody body" id="body">
+          <b-row class="m-0 terminalRow">
+            <b-col class="p-0">
+              <b-jumbotron class="terminalContainer" bg-variant="dark" text-variant="light" border-variant="dark">
+                <div id="helloWorld" class="terminal-prompt">
+              </b-jumbotron>
+              </div>
             </b-col>
           </b-row>
-          <b-row>
-            <b-col>
-              This is the psuedo interpreter
+          <b-row class="m-0 interpreterRow">
+            <b-col class="p-0">
+              <b-jumbotron class="interpreterContainer" bg-variant="dark" text-variant="light" border-variant="dark">
+                <div id="interpreter" class="interpreter">
+              </b-jumbotron>
+              </div>
             </b-col>
           </b-row>
-        </b-container>
       </div>
-      <div id="footer">
+      <div class="footerNav" id="footer">
         <b-navbar type="dark" variant="dark">
           <b-navbar-nav class="mx-auto">
             <b-nav-item href="https://www.facebook.com/hunter.schuler.9">
@@ -101,3 +105,4 @@
   </body>
 </html>
 <script src="js/main.js"></script>
+<script src="js/helloworld.js"></script>

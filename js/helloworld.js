@@ -1,33 +1,40 @@
-helloWorld = {
-    python: `print("Hello World")`,
-    ruby: `puts "Hello World"`,
-    java: 
+function printCode() {
+    // Format: [interpreter, code, extension]
+    let helloWorld = {
+        python: ['python', `print("Hello World")`, '.py'],
+        ruby: ['IRB', `puts "Hello World"`, '.rb'],
+        java:
+            ['java', 
     `class HelloWorld {
         static public void main(String args[]) {
             System.out.println("Hello World");
         }
-    }`,
-    javascript: `console.log("Hello World")`,
-    cpp: 
+    }`, '.java'],
+        javascript: ['node', `console.log("Hello World")`, '.js'],
+        cpp:
+            ['g++', 
     `#include <iostream>
     int main() {
         std::cout << "Hello World" << std::endl;
-    }`,
-    c: 
+    }`, '.cpp'],
+        c:
+            ['gcc', 
     `#include <stdio.h>
     #include <stdlib.h>
     int main(void) {
         puts("Hello World");
         return EXIT_SUCCESS;
-    }`,
-    css: 
+    }`, '.c'],
+        css:
+            ['npm run build-css', 
     `body:before {
         content: "Hello World";
-    }`,
-    shell: `echo Hello World`,
-    sql: `SELECT "Hello World";`,
-    powershell: `'Hello World'`,
-    html: 
+    }`, '.css'],
+        shell: ['echo', `Hello World`, '.sh'],
+        sql: ['mysql', `SELECT "Hello World";`, '.sql'],
+        powershell: ['powershell', `"Hello World"`, ''],
+        html:
+            ['w3m -dump', 
     `<html>
         <head>
             <title> Hello World </title>
@@ -35,13 +42,36 @@ helloWorld = {
         <body>
             <p> Hello World </p>
         </body>
-    </html>`,
+    </html>`, '.html'],
+    }
+
+    let newLineStart = "Hunter@HunterThe.Dev:~$ "
+    let keys = Object.keys(helloWorld);
+    let index = Math.round(Math.random() * keys.length - 1);
+
+    let makeFile = "echo (\n" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
+    let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
+
+    document.getElementById("helloWorld").innerText = newLineStart;
+    writeCodeToHTML(makeFile, "helloWorld");
+    setTimeout(() => {
+        document.getElementById("helloWorld").innerText += "\n> " + newLineStart;
+    }, makeFile.length * 100)
+    setTimeout(() => {
+        writeCodeToHTML(loadFile, "helloWorld") 
+    }, (makeFile.length + newLineStart.length) * 100)
+    setTimeout(() => {
+        document.getElementById('interpreter').innerText = "Hello World"
+    }, (makeFile.length + newLineStart.length + loadFile.length) * 100)
 }
 
-function printCode() {
-    let keys = Object.keys(helloWorld);
-    index = Math.round(Math.random() * keys.length - 1);
-    for(let i = 0; i < helloWorld[keys[index]].length; i++) {
-        console.log(helloWorld[keys[index]][i])
+function writeCodeToHTML(code, destination) {
+    for (let i = 0; i < code.length; i++) {
+        ((strIndex) => {
+            setTimeout(() => {
+                document.getElementById(destination).innerText += code[strIndex];
+            }, 100 * i)
+        })(i);
     }
 }
+printCode();
