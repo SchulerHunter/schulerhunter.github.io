@@ -57,7 +57,7 @@ function printCode() {
     let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
     
     document.getElementById("helloWorld").innerText = newLineStart
-    for(let i = 0; i < makeFile; i++) {
+    for(let i = 0; i < makeFile.length; i++) {
         ((strIndex) => {
             setTimeout(() => {
                 document.getElementById("helloWorld").innerText += makeFile[strIndex];
@@ -65,7 +65,7 @@ function printCode() {
         })(i);
     }
     document.getElementById("helloWorld").innerText += "\n" + newLineStart
-    for (let i = 0; i < loadFile; i++) {
+    for (let i = 0; i < loadFile.length; i++) {
         document.getElementById("helloWorld").innerText += makeFile[i]
     }
 }
