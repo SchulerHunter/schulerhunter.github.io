@@ -55,7 +55,7 @@ function printCode() {
     document.getElementById("helloWorld").innerText = newLineStart;
     writeCodeToHTML(makeFile);
     setTimeout(() => {
-        document.getElementById("helloWorld").innerText += "\n" + newLineStart;
+        document.getElementById("helloWorld").innerText += "\n> " + newLineStart;
     }, makeFile.length*100)
     setTimeout(() => {
         writeCodeToHTML(loadFile) 
