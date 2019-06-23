@@ -1,12 +1,12 @@
 .terminalPrompt, .output {
   border-radius: 25px;
-  padding: 20px;
+  padding: 1.5%;
   background-color: #222225;
   position: relative;
 }
 
 .terminalPrompt{
-  height: 75%;
+  height: 90%;
 }
 
 .output {
