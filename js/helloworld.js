@@ -27,12 +27,12 @@ function printCode() {
     }`, '.c'],
         css:
             ['npm run build-css', 
-    `body:before {
+    `body::before {
         content: "Hello World";
     }`, '.css'],
-        shell: ['echo', `Hello World`, '.sh'],
+        shell: ['bash', `echo Hello World`, '.sh'],
         sql: ['mysql', `SELECT "Hello World";`, '.sql'],
-        powershell: ['powershell', `"Hello World"`, ''],
+        powershell: ['powershell', `"Hello World"`, '.ps1'],
         html:
             ['w3m -dump', 
     `<html>
@@ -47,22 +47,26 @@ function printCode() {
 
     let newLineStart = "Hunter@HunterThe.Dev:~$ "
     let keys = Object.keys(helloWorld);
-    let index = Math.round(Math.random() * keys.length - 1);
+    let index = Math.round(Math.random() * (keys.length - 1));
 
-    let makeFile = "echo (\n" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
+    let makeFile = "echo (" + helloWorld[keys[index]][1] + ") > helloWorld" + helloWorld[keys[index]][2];
     let loadFile = helloWorld[keys[index]][0] + " helloWorld" + helloWorld[keys[index]][2];
 
+    document.getElementById('output').innerText = ""
     document.getElementById("helloWorld").innerText = newLineStart;
     writeCodeToHTML(makeFile, "helloWorld");
     setTimeout(() => {
         document.getElementById("helloWorld").innerText += "\n> " + newLineStart;
-    }, makeFile.length * 100)
+    }, (makeFile.length) * 100)
     setTimeout(() => {
         writeCodeToHTML(loadFile, "helloWorld") 
     }, (makeFile.length + newLineStart.length) * 100)
     setTimeout(() => {
-        document.getElementById('interpreter').innerText = "Hello World"
+        document.getElementById('output').innerText = "Hello World"
     }, (makeFile.length + newLineStart.length + loadFile.length) * 100)
+    setTimeout(() => {
+        printCode();
+    }, (makeFile.length + newLineStart.length + loadFile.length + 50) * 100)
 }
 
 function writeCodeToHTML(code, destination) {

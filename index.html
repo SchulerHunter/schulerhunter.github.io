@@ -9,22 +9,10 @@
     <title>Hunter The .Dev</title>
 
     <!-- Required Stylesheets -->
-    <link
-      type="text/css"
-      rel="stylesheet"
-      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
-    <link
-      type="text/css"
-      rel="stylesheet"
-      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
-    <link 
-      type="text/css" 
-      rel="stylesheet" 
-      href="css/terminal.css" />
-    <link
-      type="text/css"
-      rel="stylesheet"
-      href="css/main.css"/>
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
+    <link type="text/css" rel="stylesheet" href="css/terminal.css" />
+    <link type="text/css" rel="stylesheet" href="css/main.css" />
 
     <!-- Required scripts -->
     <script src="https://unpkg.com/vue"></script>
@@ -34,7 +22,7 @@
   </head>
   <body>
     <div id="main">
-      <div class="headerNav" id="header">
+      <header id="header">
         <b-navbar class="headerNav" toggleable="lg" type="dark" variant="dark">
           <b-navbar-brand href="/">Icon Here</b-navbar-brand>
           <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
@@ -55,26 +43,18 @@
             </b-navbar-nav>
           </b-collapse>
         </b-navbar>
-      </div>
-      <div class="helloBody body" id="body">
-          <b-row class="m-0 terminalRow">
-            <b-col class="p-0">
-              <b-jumbotron class="terminalContainer" bg-variant="dark" text-variant="light" border-variant="dark">
-                <div id="helloWorld" class="terminal-prompt">
-              </b-jumbotron>
-              </div>
-            </b-col>
-          </b-row>
-          <b-row class="m-0 interpreterRow">
-            <b-col class="p-0">
-              <b-jumbotron class="interpreterContainer" bg-variant="dark" text-variant="light" border-variant="dark">
-                <div id="interpreter" class="interpreter">
-              </b-jumbotron>
-              </div>
-            </b-col>
-          </b-row>
-      </div>
-      <div class="footerNav" id="footer">
+      </header>
+      <main>
+        <b-jumbotron class="terminalContainer" header="Code" header-level="4" bg-variant="dark" text-variant="light"
+          border-variant="dark">
+          <div id="helloWorld" class="terminalPrompt"></div>
+        </b-jumbotron>
+        <b-jumbotron class="outputContainer" header="Output" header-level="4" bg-variant="dark" text-variant="light"
+          border-variant="dark">
+          <div id="output" class="output"></div>
+        </b-jumbotron>
+      </main>
+      <footer id="footer">
         <b-navbar type="dark" variant="dark">
           <b-navbar-nav class="mx-auto">
             <b-nav-item href="https://www.facebook.com/hunter.schuler.9">
@@ -100,7 +80,7 @@
             </b-nav-text>
           </b-navbar-nav>
         </b-navbar>
-      </div>
+      </footer>
     </div>
   </body>
 </html>
