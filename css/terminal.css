@@ -1,6 +1,6 @@
 .terminalPrompt, .output {
   border-radius: 25px;
-  padding: 1.5%;
+  padding: 2% 3%;
   background-color: #222225;
   position: relative;
 }
