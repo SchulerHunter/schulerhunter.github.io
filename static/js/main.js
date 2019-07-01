@@ -65,7 +65,7 @@ const Footer = Vue.component('footerNav', {
   template: `
     <b-navbar type="dark" variant="dark">
       <b-navbar-nav class="mx-auto">
-        <b-nav-item v-for="group in footerLinks" :href="group.link">
+        <b-nav-item v-for="group in footerLinks" :href="group.link" :key="group.keys">
           <i :class="group.icon"></i>
         </b-nav-item>
       </b-navbar-nav>
