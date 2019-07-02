@@ -22,10 +22,27 @@
     <body>
         <div id="main">
             <header-nav></header-nav>
-            <main>
+            <main class="timeline">
+                <b-card 
+                    v-for="event in events" 
+                    :title="event.header" 
+                    :sub-title="event.date"
+                    bg-variant="dark"
+                >
+                    <b-card-text>
+                        {{ event.info }}
+                    </b-card-text>
+                    <b-link 
+                        v-if="event.learnmore" 
+                        :href="event.learnmore"
+                        class="card-link"
+                    >
+                        Learn More
+                    </b-link>
             </main>
             <footer-nav></footer-nav>
         </div>
     </body>
 </html>
+<script src="../static/js/timeline.js"></script>
 <script src="../static/js/main.js"></script>
