@@ -13,7 +13,7 @@ const header = Vue.component('headerNav', {
     }
   },
   template: `
-    <b-navbar class="headerNav" toggleable="lg" type="dark" variant="dark">
+    <b-navbar class="header" toggleable="lg" type="dark" variant="dark">
       <b-navbar-brand href="/">Icon Here</b-navbar-brand>
       <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
       <b-collapse id="nav-collapse" is-nav>
@@ -63,7 +63,7 @@ const Footer = Vue.component('footerNav', {
     }
   },
   template: `
-    <b-navbar type="dark" variant="dark">
+    <b-navbar class="footer" type="dark" variant="dark">
       <b-navbar-nav class="mx-auto">
         <b-nav-item v-for="group in footerLinks" :href="group.link" :key="group.keys">
           <i :class="group.icon"></i>
