@@ -1,16 +1,8 @@
 .terminalPrompt, .output {
+  flex: auto;
   border-radius: 25px;
-  padding: 2% 3%;
   background-color: #222225;
-  position: relative;
-}
-
-.terminalPrompt{
-  height: 90%;
-}
-
-.output {
-  height: 45%;
+  padding: 2vh;
 }
 
 .terminalPrompt::before {
