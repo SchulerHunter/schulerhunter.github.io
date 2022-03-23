@@ -225,7 +225,7 @@ const bigProjects = {
     {
       image: require("./assets/images/essenceLogo.jpg"),
       projectName: "ESSENCE",
-      projectDesc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+      projectDesc: "Bio-survaillance and data-analytic software to monitor disease progression throughout the USA in various hospitals. Aidded in the deployment at multiple hospitals in Virginia and DC Metro Area. ",
       footerLink: [
         {
           name: "JHU APL Website",
