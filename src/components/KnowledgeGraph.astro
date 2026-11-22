@@ -1,0 +1,795 @@
+---
+import {
+  ALPHA_LEVELS,
+  EDGE_ALPHA,
+  NODE_ALPHA,
+  NODE_PX,
+  SCALE_H,
+  SCALE_W,
+  SEARCHER_BAND,
+  SEARCHER_PX,
+  SEARCHER_RING_PX,
+  SEARCHER_SIDE,
+  START_PITCH,
+  START_YAW,
+  buildGraph,
+  fade,
+  project,
+} from "../lib/graph";
+
+// Typical rendered graph radius in pixels; only sizes the fallback's dots.
+const REFERENCE_RADIUS = 180;
+
+const { nodes, edges } = buildGraph();
+const points = nodes.map((node) => project(node, START_YAW, START_PITCH));
+const n = (value: number) => value.toFixed(3);
+const edgePaths = Array.from({ length: ALPHA_LEVELS }, () => "");
+for (const edge of edges) {
+  const p = points[edge.a];
+  const q = points[edge.b];
+  const level = Math.min(ALPHA_LEVELS - 1, Math.floor(Math.min(fade(p.depth), fade(q.depth)) * ALPHA_LEVELS));
+  edgePaths[level] += `M${n(p.x)} ${n(p.y)}L${n(q.x)} ${n(q.y)}`;
+}
+const width = 1 / SCALE_W;
+const height = 1 / SCALE_H;
+---
+
+<div class="graph" data-graph aria-hidden="true">
+  <svg viewBox={`${n(-width / 2)} ${n(-height / 2)} ${n(width)} ${n(height)}`} preserveAspectRatio="xMidYMid meet">
+    {edgePaths.map((d, level) => d && <path d={d} opacity={n((EDGE_ALPHA * (level + 0.5)) / ALPHA_LEVELS)} />)}
+    {
+      points.map((p, i) => (
+        <circle
+          cx={n(p.x)}
+          cy={n(p.y)}
+          r={n((NODE_PX * nodes[i].size * p.depth) / REFERENCE_RADIUS)}
+          opacity={n(NODE_ALPHA * fade(p.depth))}
+        />
+      ))
+    }
+    {
+      [SEARCHER_SIDE, SEARCHER_BAND].map((at, i) => (
+        <g class={i ? "searcher band" : "searcher side"}>
+          <circle cx={n(at.x)} cy={n(at.y)} r={n(SEARCHER_PX / REFERENCE_RADIUS)} opacity="0.85" />
+          <circle class="ring" cx={n(at.x)} cy={n(at.y)} r={n(SEARCHER_RING_PX / REFERENCE_RADIUS)} opacity="0.4" />
+        </g>
+      ))
+    }
+  </svg>
+  <canvas></canvas>
+</div>
+
+<style>
+  .graph {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 58%;
+    right: calc(50% - 50vw + 1rem);
+    z-index: 0;
+    pointer-events: none;
+    mask-image:
+      linear-gradient(to right, transparent, #000 30%), linear-gradient(to bottom, transparent, #000 7%, #000 93%, transparent);
+    mask-composite: intersect;
+  }
+
+  svg,
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Scripted visitors only ever see the canvas; the SVG is the no-JS fallback. */
+  canvas,
+  :global(.js) svg {
+    display: none;
+  }
+
+  :global(.js) canvas {
+    display: block;
+  }
+
+  path {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  circle {
+    fill: var(--muted);
+  }
+
+  .band {
+    display: none;
+  }
+
+  .ring {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 0.8;
+    vector-effect: non-scaling-stroke;
+  }
+
+  @media (max-width: 720px) {
+    .graph {
+      position: relative;
+      left: auto;
+      right: auto;
+      height: 15rem;
+      margin: 1.5rem -1.25rem 0;
+      mask-image: linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+    }
+
+    .side {
+      display: none;
+    }
+
+    .band {
+      display: inline;
+    }
+  }
+</style>
+
+
+<script>
+  import {
+    ALPHA_LEVELS,
+    CLUSTER_SPREAD,
+    CLUSTERS,
+    EDGE_ALPHA,
+    M,
+    M_MAX,
+    NODE_ALPHA,
+    NODE_PX,
+    NODES,
+    NODES_SMALL,
+    SCALE_H,
+    SCALE_W,
+    SEARCHER_PX,
+    SEARCHER_RING_PX,
+    SPOT_BOX_BAND,
+    SPOT_BOX_SIDE,
+    SPOT_CLEARANCE,
+    START_PITCH,
+    START_YAW,
+    TILT,
+    buildGraph,
+    fade,
+    insert,
+    openSpots,
+    project,
+    repair,
+    type Net,
+    type Point,
+    type Spot,
+  } from "../lib/graph";
+
+  // Motion tunables. Times are in seconds, angles in radians, distances in graph-radius units.
+  const ROTATION_SPEED = 0.018;
+  const TILT_PERIOD = 50;
+  const WOBBLE = 0.014;
+  const WOBBLE_SPEED = 0.35;
+
+  // Intro: nodes are inserted one by one with the same HNSW rule as ingestion; searches, churn and updates start after.
+  const BUILD_TIME = 0.5;
+  const FIRST_SEARCH_DELAY = 0.4;
+  /** During the build edges grow and retract faster; at most MAX_RETRACTING shrink at once (queued beyond that). */
+  const BUILD_GROW_TIME = 0.25;
+  const BUILD_GROW_STAGGER = 0.03;
+  const BUILD_RETRACT_TIME = 0.2;
+  const MAX_RETRACTING = 32;
+
+  // Ingestion: one node arrives and the oldest idle one retires per tick, holding the count steady. Pruned and
+  // retiring edges shrink toward the node that keeps them.
+  const INGEST_EVERY_MIN = 1.2;
+  const INGEST_EVERY_MAX = 2;
+  /** Distance of a new node from its cluster centre, in cluster spreads. */
+  const INGEST_DISTANCE = 1.8;
+  const ARRIVE_TIME = 0.1;
+  /** Each edge of a new node grows from it toward its neighbour over this, the next one starting a stagger later. */
+  const EDGE_GROW_TIME = 0.4;
+  const EDGE_GROW_STAGGER = 0.06;
+  const RETIRE_TIME = 1.6;
+  /** Each edge of a retiring node shrinks toward its surviving neighbour over this, the next one starting a stagger later. */
+  const EDGE_RETRACT_TIME = 1.1;
+  const EDGE_RETRACT_STAGGER = 0.08;
+
+  // In-place updates: an idle node briefly shows a thin accent ring, keeping its position and edges.
+  const UPDATE_EVERY_MIN = 2.5;
+  const UPDATE_EVERY_MAX = 4;
+  const UPDATE_TIME = 0.7;
+  const UPDATE_ALPHA = 0.35;
+  /** How far the ring grows past the node, in CSS pixels. */
+  const UPDATE_RING_PX = 5;
+
+  // Searchers: independent single-use cycles that appear, search, then fade out.
+  const SEARCHERS = 2;
+  const SEARCHERS_MOBILE = 1;
+  const SEARCH_GAP_MIN = 3;
+  const SEARCH_GAP_MAX = 6;
+  const SEARCHER_SPACING = 0.6;
+  const SEARCHER_DRIFT = 0.03;
+  const SMALL_SCREEN = 600;
+
+  /** Plays the searcher and retrieval durations below at this fraction of their values. */
+  const PACE = 0.6;
+  const APPEAR = 0.6;
+  const PAUSE = 0.8;
+  const QUERY_TRAVEL = 1.2;
+  /** Greedy routing toward the hidden query point; each step may look two hops ahead to cross between clusters. */
+  const MAX_ROUTE_HOPS = 6;
+  const ROUTE_HOP = 0.16;
+  /** Local expansion around where the route stops: hops explored, nodes kept per hop and time per hop. */
+  const EXPAND_HOPS = 2;
+  const EXPAND_BEAM = 6;
+  const EXPAND_STEP = 0.22;
+  const K_RESULTS = 5;
+  const K_RESULTS_MOBILE = 4;
+  /** The hidden query point lies within QUERY_SPREAD cluster spreads of a node this many hops from the entry. */
+  const QUERY_HOPS_MIN = 3;
+  const QUERY_HOPS_MAX = 8;
+  const QUERY_SPREAD = 0.5;
+  const AFTERGLOW = 0.6;
+  const PATH_HOLD = 1;
+  const RESULT_DELAY = 0.15;
+  const RESULT_STAGGER = 0.18;
+  const RETURN_TRAVEL = 1.4;
+  const PULSE = 0.6;
+  const VANISH = 0.8;
+  const RETRY = 0.5;
+
+  interface Node extends Point {
+    cluster: number;
+    size: number;
+    phase: number;
+    born: number;
+    presence: number;
+    leaving: boolean;
+    updatedAt: number;
+    insertAt: number;
+    links: Link[];
+    sx: number;
+    sy: number;
+    depth: number;
+    now: Point;
+  }
+  interface Link {
+    a: Node;
+    b: Node;
+    /** Set while the edge grows out from a new endpoint. */
+    grow?: { from: Node; at: number; time: number };
+    /** Set while the edge shrinks away from the endpoint that dropped it. */
+    retract?: { from: Node; at: number; time: number };
+  }
+  interface Search {
+    route: Node[];
+    examined: { node: Node; from: Node; at: number }[];
+    /** Results, nearest to the query point first. */
+    targets: Node[];
+    active: number;
+    depart: number[];
+    end: number;
+  }
+  interface Cycle {
+    spot: Spot | null;
+    last: Spot | null;
+    phase: number;
+    born: number;
+    wait: number;
+    search: Search | null;
+    searchAt: number;
+    tryAt: number;
+  }
+  type Flat = { x: number; y: number };
+
+  const root = document.querySelector<HTMLElement>("[data-graph]");
+  if (root) animate(root, matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  function animate(root: HTMLElement, still: boolean) {
+    const canvas = root.querySelector("canvas")!;
+    const ctx = canvas.getContext("2d")!;
+    const rand = Math.random;
+    const seed = buildGraph(rand);
+    const pools = new Map<boolean, Spot[]>();
+    const spotsFor = (wide: boolean) => {
+      // A crowded random layout may leave no fully clear spot, so the clearance relaxes until one exists.
+      for (let clearance = SPOT_CLEARANCE; !pools.get(wide)?.length && clearance > 0; clearance -= 0.05) {
+        pools.set(wide, openSpots(wide ? seed.nodes : seed.nodes.slice(0, NODES_SMALL), wide ? SPOT_BOX_SIDE : SPOT_BOX_BAND, clearance));
+      }
+      return pools.get(wide)!;
+    };
+    const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+    const between = (lo: number, hi: number) => lo + rand() * (hi - lo);
+    const clamp = (x: number) => Math.min(1, Math.max(0, x));
+    const smooth = (x: number) => {
+      const f = clamp(x);
+      return f * f * (3 - 2 * f);
+    };
+    const ease = (u: number) => (u < 0.5 ? 4 * u ** 3 : 1 - (2 - 2 * u) ** 3 / 2);
+    const gap = (p: Point, q: Point) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
+
+    let ink = "";
+    let accent = "";
+    const readColours = () => {
+      const style = getComputedStyle(root);
+      ink = style.getPropertyValue("--muted").trim();
+      accent = style.getPropertyValue("--accent").trim();
+    };
+    readColours();
+
+    let width = 0;
+    let height = 0;
+    let radius = 1;
+    let side = true;
+    let target = NODES;
+    let clock = 0;
+    let yaw = START_YAW;
+    let pitch = START_PITCH;
+    let nextIngest = between(INGEST_EVERY_MIN, INGEST_EVERY_MAX);
+    let nextUpdate = between(UPDATE_EVERY_MIN, UPDATE_EVERY_MAX);
+    let nodes: Node[] = [];
+    let links: Link[] = [];
+    let pending: Node[] = [];
+    let built = false;
+    const cycles: Cycle[] = Array.from({ length: Math.max(SEARCHERS, SEARCHERS_MOBILE) }, (_, k) => ({
+      spot: null,
+      last: null,
+      phase: rand() * 6,
+      born: 0,
+      wait: FIRST_SEARCH_DELAY + k * between(SEARCH_GAP_MIN, SEARCH_GAP_MAX) * 0.6,
+      search: null,
+      searchAt: 0,
+      tryAt: 0,
+    }));
+
+    // Graph upkeep
+    const other = (l: Link, n: Node) => (l.a === n ? l.b : l.a);
+    const nearestFirst = (base: Point) => (p: Point, q: Point) => gap(p, base) - gap(q, base);
+    const makeNode = (p: Point, cluster: number, size: number): Node => ({
+      ...p,
+      cluster,
+      size,
+      presence: still ? 1 : 0,
+      phase: rand() * 6.3,
+      born: clock,
+      leaving: false,
+      updatedAt: -9,
+      insertAt: clock,
+      links: [],
+      sx: 0,
+      sy: 0,
+      depth: 1,
+      now: p,
+    });
+    const linked = (a: Node, b: Node) => a.links.some((l) => other(l, a) === b);
+    const live = (n: Node) => n.links.filter((l) => !l.retract).map((l) => other(l, n));
+    const growing = (n: Node) => n.links.filter((l) => l.grow?.from === n && clock < l.grow.at + l.grow.time).length;
+    const link = (a: Node, b: Node) => {
+      if (a === b || linked(a, b)) return;
+      const l: Link = { a, b };
+      if (!still) {
+        const at = Math.max(clock, a.insertAt + ARRIVE_TIME) + growing(a) * (built ? EDGE_GROW_STAGGER : BUILD_GROW_STAGGER);
+        l.grow = { from: a, at, time: built ? EDGE_GROW_TIME : BUILD_GROW_TIME };
+      }
+      a.links.push(l);
+      b.links.push(l);
+      links.push(l);
+    };
+    const drop = (l: Link) => {
+      l.a.links = l.a.links.filter((m) => m !== l);
+      l.b.links = l.b.links.filter((m) => m !== l);
+      links = links.filter((m) => m !== l);
+    };
+    const shrink = (l: Link, from: Node, at: number, time: number) => {
+      const ends = links.flatMap((m) => (m.retract ? [m.retract.at + m.retract.time] : [])).filter((end) => end > at);
+      if (ends.length >= MAX_RETRACTING) at = ends.sort((p, q) => p - q)[ends.length - MAX_RETRACTING];
+      l.retract = { from, at, time };
+    };
+    const net: Net<Node> = {
+      links: live,
+      link,
+      unlink: (pruner, dropped) => {
+        const l = pruner.links.find((m) => !m.retract && other(m, pruner) === dropped);
+        if (!l) return;
+        // An edge pruned before it began growing was never seen, so it simply goes.
+        if (still || (l.grow && clock < l.grow.at)) drop(l);
+        else shrink(l, pruner, clock, built ? EDGE_RETRACT_TIME : BUILD_RETRACT_TIME);
+      },
+    };
+    const place = (node: Node) => {
+      node.born = clock;
+      nodes.push(node);
+      insert(node, nodes.filter((n) => !n.leaving), net);
+    };
+
+    const settled = (n: Node) => !n.leaving && n.presence > 0.9;
+    const ingest = () => {
+      const c = Math.floor(rand() * CLUSTERS);
+      const centre = seed.centres[c];
+      const dir = { x: rand() - 0.5, y: (rand() - 0.5) * 0.8, z: rand() - 0.5 };
+      const scale = (CLUSTER_SPREAD * INGEST_DISTANCE * between(0.85, 1.15)) / (Math.hypot(dir.x, dir.y, dir.z) || 1);
+      place(makeNode({ x: centre.x + dir.x * scale, y: centre.y + dir.y * scale, z: centre.z + dir.z * scale }, c, between(0.7, 1.3)));
+    };
+    const idle = () => {
+      const busy = new Set<Node>();
+      for (const { search } of cycles) {
+        if (search) [...search.route, ...search.examined.map((e) => e.node), ...search.targets].forEach((n) => busy.add(n));
+      }
+      return nodes.filter((n) => settled(n) && !busy.has(n));
+    };
+    const retire = () => {
+      const oldest = idle().sort((p, q) => p.born - q.born)[0];
+      if (!oldest) return;
+      const around = live(oldest);
+      oldest.leaving = true;
+      oldest.links.forEach((l, k) => l.retract || shrink(l, oldest, clock + k * EDGE_RETRACT_STAGGER, EDGE_RETRACT_TIME));
+      // Neighbours relink while the node fades, so none is left stranded.
+      const alive = nodes.filter((n) => !n.leaving);
+      for (const x of around) {
+        if (x.leaving) continue;
+        const picks = alive.filter((n) => n !== x && !linked(x, n) && live(n).length < M_MAX).sort(nearestFirst(x));
+        picks.slice(0, Math.max(0, M - live(x).length)).forEach((n) => link(x, n));
+      }
+      repair(alive, net);
+    };
+    const retracted = (l: Link) => !!l.retract && clock - l.retract.at >= l.retract.time;
+    const grown = (l: Link) => !l.grow || clock - l.grow.at >= l.grow.time;
+    const remove = (node: Node) => {
+      [...node.links].forEach(drop);
+      nodes = nodes.filter((n) => n !== node);
+    };
+
+    /** Inverse of smoothstep: when the build reaches fraction `y` of its nodes, slow at both ends and fastest midway. */
+    const unsmooth = (y: number) => 0.5 - Math.sin(Math.asin(1 - 2 * y) / 3);
+
+    const reset = () => {
+      nodes = [];
+      links = [];
+      pending = seed.nodes
+        .slice(0, target)
+        .map((n) => makeNode(n, n.cluster, n.size))
+        .sort(() => rand() - 0.5);
+      pending.forEach((n, k) => (n.insertAt = BUILD_TIME * unsmooth(k / pending.length)));
+      const pool = spotsFor(side);
+      if (!still) return;
+      pending.splice(0).forEach(place);
+      repair(nodes, net);
+      built = true;
+      Object.assign(cycles[0], { spot: pool[Math.floor(rand() * pool.length)], born: clock - APPEAR * PACE });
+    };
+
+    // Searches
+    const searcher = (cycle: Cycle): Flat => ({
+      x: width / 2 + (cycle.spot!.x + SEARCHER_DRIFT * (Math.sin(clock * WOBBLE_SPEED * 0.5 + cycle.phase) - Math.sin(cycle.phase))) * radius,
+      y: height / 2 + (cycle.spot!.y + (pitch - START_PITCH) * (SEARCHER_DRIFT / TILT)) * radius,
+    });
+    const neighbours = (n: Node) => n.links.filter((l) => !l.retract && grown(l)).map((l) => other(l, n)).filter(settled);
+
+    const begin = (from: Flat): Search | null => {
+      const ready = nodes.filter(settled);
+      if (!ready.length) return null;
+      const entry = ready.reduce((best, n) => (Math.hypot(n.sx - from.x, n.sy - from.y) < Math.hypot(best.sx - from.x, best.sy - from.y) ? n : best));
+      // The hidden query point sits near a node a few hops away, so the greedy route has somewhere to travel.
+      const depth = new Map([[entry, 0]]);
+      for (const queue = [entry]; queue.length; ) {
+        const a = queue.shift()!;
+        if (depth.get(a)! < QUERY_HOPS_MAX) for (const b of neighbours(a)) if (!depth.has(b) && depth.set(b, depth.get(a)! + 1)) queue.push(b);
+      }
+      const far = [...depth].filter(([, d]) => d >= QUERY_HOPS_MIN).map(([n]) => n);
+      const anchor = far.length ? far[Math.floor(rand() * far.length)] : entry;
+      const spread = CLUSTER_SPREAD * QUERY_SPREAD;
+      const goal = { x: anchor.x + gauss() * spread, y: anchor.y + gauss() * spread, z: anchor.z + gauss() * spread };
+      const closer = (p: Node, q: Node) => gap(p, goal) < gap(q, goal);
+
+      const route = [entry];
+      for (let hop = 0; hop < MAX_ROUTE_HOPS; hop++) {
+        const here = route[route.length - 1];
+        let best = here;
+        let via: Node | null = null;
+        for (const a of neighbours(here)) {
+          if (closer(a, best)) [best, via] = [a, null];
+          for (const b of neighbours(a)) if (closer(b, best) && !route.includes(b)) [best, via] = [b, a];
+        }
+        if (best === here) break;
+        if (via) route.push(via);
+        route.push(best);
+      }
+
+      const routeEnd = QUERY_TRAVEL + (route.length - 1) * ROUTE_HOP;
+      const examined: Search["examined"] = [];
+      const seen = new Set(route);
+      let frontier = [route[route.length - 1]];
+      for (let level = 0; level < EXPAND_HOPS; level++) {
+        const next = frontier
+          .flatMap((a) => neighbours(a).map((node) => ({ node, from: a })))
+          .filter(({ node }) => !seen.has(node) && seen.add(node))
+          .sort((p, q) => gap(p.node, goal) - gap(q.node, goal))
+          .slice(0, EXPAND_BEAM);
+        next.forEach((e) => examined.push({ ...e, at: routeEnd + level * EXPAND_STEP }));
+        frontier = next.map((e) => e.node);
+      }
+
+      const k = target === NODES_SMALL ? K_RESULTS_MOBILE : K_RESULTS;
+      const targets = [...route.slice(-3), ...examined.map((e) => e.node)].sort((p, q) => gap(p, goal) - gap(q, goal)).slice(0, k);
+      const active = routeEnd + EXPAND_HOPS * EXPAND_STEP + 0.1;
+      const depart = targets.map((_, i) => active + RESULT_DELAY + i * RESULT_STAGGER);
+      return { route, examined, targets, active, depart, end: depart[depart.length - 1] + RETURN_TRAVEL + PULSE };
+    };
+
+    const advance = (cycle: Cycle, k: number, dt: number) => {
+      if (!cycle.spot) {
+        if (k >= (side ? SEARCHERS : SEARCHERS_MOBILE) || (cycle.wait -= dt) > 0) return;
+        const pool = spotsFor(side);
+        const taken = cycles.flatMap((c) => (c.spot ? [c.spot] : []));
+        const free = pool.filter((s) => s !== cycle.last && taken.every((t) => Math.hypot(t.x - s.x, t.y - s.y) >= SEARCHER_SPACING));
+        const choices = free.length ? free : pool.filter((s) => s !== cycle.last);
+        Object.assign(cycle, { spot: choices[Math.floor(rand() * choices.length)], born: clock, search: null, tryAt: APPEAR + PAUSE });
+        return;
+      }
+      const t = (clock - cycle.born) / PACE;
+      if (!cycle.search && t >= cycle.tryAt) {
+        cycle.search = begin(searcher(cycle));
+        cycle.searchAt = t;
+        cycle.tryAt = t + RETRY;
+      }
+      if (cycle.search && t > cycle.searchAt + cycle.search.end + VANISH) {
+        Object.assign(cycle, { last: cycle.spot, spot: null, search: null, wait: between(SEARCH_GAP_MIN, SEARCH_GAP_MAX) });
+      }
+    };
+
+    const step = (dt: number) => {
+      clock += dt;
+      yaw = START_YAW + clock * ROTATION_SPEED;
+      pitch = START_PITCH + TILT * Math.sin((clock / TILT_PERIOD) * Math.PI * 2);
+      while (pending.length && pending[0].insertAt <= clock) place(pending.shift()!);
+      for (const n of nodes) n.presence = clamp(n.presence + (n.leaving ? -dt / RETIRE_TIME : dt / ARRIVE_TIME));
+      links.filter((l) => retracted(l) && !l.a.leaving && !l.b.leaving).forEach(drop);
+      if (!built) {
+        if (pending.length) return;
+        repair(nodes, net);
+        built = true;
+      }
+      if ((nextIngest -= dt) <= 0) {
+        const alive = nodes.filter((n) => !n.leaving).length;
+        if (alive <= target) ingest();
+        if (alive >= target) retire();
+        nextIngest = between(INGEST_EVERY_MIN, INGEST_EVERY_MAX);
+      }
+      if ((nextUpdate -= dt) <= 0) {
+        const fresh = idle().filter((n) => clock - n.born > 3);
+        if (fresh.length) fresh[Math.floor(rand() * fresh.length)].updatedAt = clock;
+        nextUpdate = between(UPDATE_EVERY_MIN, UPDATE_EVERY_MAX);
+      }
+      nodes.filter((n) => n.leaving && n.presence <= 0 && n.links.every(retracted)).forEach(remove);
+      cycles.forEach((cycle, k) => advance(cycle, k, dt));
+    };
+
+    // Drawing
+    const line = (p: Flat, q: Flat) => {
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(q.x, q.y);
+    };
+    const dot = (p: Flat, r: number) => {
+      ctx.moveTo(p.x + r, p.y);
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    };
+    /** A point along a gentle arc from p to q that bows sideways by `bend` of its length. */
+    const arc = (p: Flat, q: Flat, bend: number, u: number): Flat => {
+      const cx = (p.x + q.x) / 2 - (q.y - p.y) * bend;
+      const cy = (p.y + q.y) / 2 + (q.x - p.x) * bend;
+      const v = 1 - u;
+      return { x: v * v * p.x + 2 * v * u * cx + u * u * q.x, y: v * v * p.y + 2 * v * u * cy + u * u * q.y };
+    };
+    const level = (f: number) => Math.min(ALPHA_LEVELS - 1, Math.floor(f * ALPHA_LEVELS));
+    const at = (n: Node): Flat => ({ x: n.sx, y: n.sy });
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      for (const n of nodes) {
+        const w = (f: number, k: number) => WOBBLE * (Math.sin(clock * WOBBLE_SPEED * f + n.phase * k) - Math.sin(n.phase * k));
+        n.now = { x: n.x + w(1, 1), y: n.y + w(1.3, 2), z: n.z + w(0.7, 3) };
+        const q = project(n.now, yaw, pitch);
+        n.sx = width / 2 + q.x * radius;
+        n.sy = height / 2 + q.y * radius;
+        n.depth = q.depth;
+      }
+
+      const edgeLevels: Link[][] = Array.from({ length: ALPHA_LEVELS }, () => []);
+      for (const l of links) {
+        const keep = l.retract ? (l.retract.from === l.a ? l.b : l.a) : null;
+        const presence = keep ? keep.presence : Math.min(l.a.presence, l.b.presence);
+        const f = Math.min(fade(l.a.depth), fade(l.b.depth)) * presence;
+        if (f > 0.02 && !retracted(l)) edgeLevels[level(f)].push(l);
+      }
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = ink;
+      // Edges grow out from their new endpoint; a retracting edge shrinks from the dropping side, from however far it had grown.
+      const ends = (l: Link): [Flat, Flat] => {
+        const origin = l.grow?.from ?? l.a;
+        const p = at(origin);
+        const q = at(other(l, origin));
+        const along = (u: number): Flat => ({ x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u });
+        const extent = (t: number) => (l.grow ? ease(clamp((t - l.grow.at) / l.grow.time)) : 1);
+        let start = 0;
+        let end = extent(l.retract ? Math.min(clock, l.retract.at) : clock);
+        if (l.retract) {
+          const u = ease(clamp((clock - l.retract.at) / l.retract.time));
+          if (l.retract.from === origin) start = end * u;
+          else end *= 1 - u;
+        }
+        return [along(start), along(end)];
+      };
+      edgeLevels.forEach((group, k) => {
+        ctx.beginPath();
+        group.forEach((l) => line(...ends(l)));
+        ctx.globalAlpha = (EDGE_ALPHA * (k + 0.5)) / ALPHA_LEVELS;
+        ctx.stroke();
+      });
+
+      const nodeLevels: Node[][] = Array.from({ length: ALPHA_LEVELS }, () => []);
+      for (const n of nodes) if (n.presence > 0.02) nodeLevels[level(fade(n.depth) * n.presence)].push(n);
+      ctx.fillStyle = ink;
+      nodeLevels.forEach((group, k) => {
+        ctx.beginPath();
+        group.forEach((n) => dot(at(n), NODE_PX * n.size * n.depth * (0.4 + 0.6 * n.presence)));
+        ctx.globalAlpha = (NODE_ALPHA * (k + 0.5)) / ALPHA_LEVELS;
+        ctx.fill();
+      });
+
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 0.6;
+      for (const n of nodes) {
+        const u = (clock - n.updatedAt) / UPDATE_TIME;
+        if (u < 0 || u >= 1 || n.leaving) continue;
+        ctx.globalAlpha = UPDATE_ALPHA * Math.sin(Math.PI * u) * fade(n.depth);
+        ctx.beginPath();
+        dot(at(n), NODE_PX * n.size * n.depth + 1 + UPDATE_RING_PX * ease(u));
+        ctx.stroke();
+      }
+      ctx.lineWidth = 0.8;
+
+      for (const cycle of cycles) if (cycle.spot) drawCycle(cycle, (clock - cycle.born) / PACE);
+      ctx.globalAlpha = 1;
+    };
+
+    const drawSearch = (ev: Search, t: number, home: Flat) => {
+      ctx.strokeStyle = accent;
+      ctx.fillStyle = accent;
+      const fadeOut = 1 - smooth((t - ev.active - PATH_HOLD) / 0.4);
+      const grow = (from: Node, to: Node, u: number) => {
+        const f = ease(clamp(u));
+        line(at(from), { x: from.sx + (to.sx - from.sx) * f, y: from.sy + (to.sy - from.sy) * f });
+      };
+      ctx.lineWidth = 1.25;
+      ctx.globalAlpha = 0.8 * fadeOut;
+      ctx.beginPath();
+      ev.route.forEach((n, i) => i && grow(ev.route[i - 1], n, (t - QUERY_TRAVEL - (i - 1) * ROUTE_HOP) / ROUTE_HOP));
+      ctx.stroke();
+      ctx.lineWidth = 0.8;
+      ev.route.forEach((n, i) => {
+        const glow = 1 - smooth((t - QUERY_TRAVEL - i * ROUTE_HOP) / AFTERGLOW);
+        if (t < QUERY_TRAVEL + i * ROUTE_HOP || glow <= 0) return;
+        ctx.globalAlpha = 0.7 * glow;
+        ctx.beginPath();
+        dot(at(n), Math.max(NODE_PX * n.size * n.depth, 1.6) * 1.3);
+        ctx.fill();
+      });
+      for (const e of ev.examined) {
+        const u = (t - e.at) / EXPAND_STEP;
+        const alpha = 0.35 * (1 - smooth((u - 1) / (AFTERGLOW / EXPAND_STEP))) * fadeOut;
+        if (u <= 0 || alpha <= 0.01) continue;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        grow(e.from, e.node, u);
+        ctx.stroke();
+      }
+
+      ev.targets.forEach((n, k) => {
+        const from = at(n);
+        const on = smooth((t - ev.active) / 0.35) * (1 - smooth((t - ev.depart[k]) / 0.3));
+        if (on > 0) {
+          ctx.globalAlpha = on;
+          ctx.beginPath();
+          dot(from, Math.max(NODE_PX * n.size * n.depth, 2) * (1 + 0.9 * on));
+          ctx.fill();
+        }
+        const u = (t - ev.depart[k]) / RETURN_TRAVEL;
+        if (u <= 0 || u >= 1) return;
+        const bend = (k % 2 ? 1 : -1) * (0.1 + 0.04 * k);
+        const head = arc(from, home, bend, ease(u));
+        ctx.globalAlpha = smooth(u / 0.1);
+        ctx.beginPath();
+        dot(head, 2.2);
+        ctx.fill();
+        ctx.globalAlpha *= 0.45;
+        ctx.beginPath();
+        line(arc(from, home, bend, ease(Math.max(0, u - 0.12))), head);
+        ctx.stroke();
+      });
+
+      const u = t / QUERY_TRAVEL;
+      if (u < 1.3) {
+        const to = at(ev.route[0]);
+        const head = arc(home, to, 0.15, ease(Math.min(1, u)));
+        ctx.globalAlpha = smooth(u / 0.15) * (1 - smooth((u - 1) / 0.3));
+        ctx.beginPath();
+        dot(head, 2);
+        ctx.fill();
+        ctx.globalAlpha *= 0.45;
+        ctx.beginPath();
+        line(arc(home, to, 0.15, ease(Math.max(0, Math.min(1, u) - 0.2))), head);
+        ctx.stroke();
+      }
+    };
+
+    const drawCycle = (cycle: Cycle, t: number) => {
+      const home = searcher(cycle);
+      const ev = cycle.search;
+      const ts = t - cycle.searchAt;
+      if (ev) drawSearch(ev, ts, home);
+      const shown = smooth(t / APPEAR) * (ev ? 1 - smooth((ts - ev.end) / VANISH) : 1);
+      const bumps = ev ? [0, ...ev.depart.map((d) => d + RETURN_TRAVEL)] : [];
+      const pulse = Math.max(0, ...bumps.map((at) => (ts < at ? 0 : 1 - smooth((ts - at) / PULSE))));
+      const size = 0.5 + 0.5 * shown;
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = 0.85 * shown;
+      ctx.beginPath();
+      dot(home, SEARCHER_PX * size);
+      ctx.fill();
+      ctx.fillStyle = accent;
+      ctx.strokeStyle = accent;
+      if (pulse > 0) {
+        ctx.globalAlpha = pulse * shown;
+        ctx.beginPath();
+        dot(home, SEARCHER_PX * size);
+        ctx.fill();
+      }
+      ctx.globalAlpha = (0.4 + 0.45 * pulse) * shown;
+      ctx.beginPath();
+      dot(home, (SEARCHER_RING_PX + 3 * pulse) * size);
+      ctx.stroke();
+    };
+
+    let frame = 0;
+    let last = 0;
+    let onScreen = false;
+    const tick = (now: number) => {
+      step(Math.min(0.05, (now - last) / 1000));
+      last = now;
+      draw();
+      frame = requestAnimationFrame(tick);
+    };
+    const run = () => {
+      cancelAnimationFrame(frame);
+      if (!onScreen || document.hidden) return;
+      last = performance.now();
+      frame = requestAnimationFrame(tick);
+    };
+
+    new ResizeObserver(([entry]) => {
+      ({ width, height } = entry.contentRect);
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      radius = Math.min(height * SCALE_H, width * SCALE_W);
+      side = getComputedStyle(root).position === "absolute";
+      target = width < SMALL_SCREEN ? NODES_SMALL : NODES;
+      if (!nodes.length && !pending.length) reset();
+      draw();
+    }).observe(root);
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      readColours();
+      draw();
+    });
+    if (still) return;
+    new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      run();
+    }).observe(root);
+    document.addEventListener("visibilitychange", run);
+  }
+</script>

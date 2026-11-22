@@ -1,0 +1,59 @@
+---
+import "../styles/global.css";
+import Fonts from "../components/Fonts.astro";
+import { profile } from "../data/profile";
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogType?: "website" | "article";
+}
+
+const { title, description = profile.headline, ogType = "website" } = Astro.props;
+const fullTitle = title ? `${title} · ${profile.name}` : `${profile.name} · ${profile.headline}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script is:inline>document.documentElement.classList.add("js");</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={profile.name} />
+    <meta property="og:title" content={title ?? profile.name} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <Fonts />
+    <slot name="head" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-name" href="/">hunterthe.dev</a>
+      <nav aria-label="Main">
+        <a href="/" aria-current={path === "/" ? "page" : undefined}>Home</a>
+        <a href="/about/" aria-current={path.startsWith("/about") ? "page" : undefined}>About</a>
+        <a href="/blog/" aria-current={path.startsWith("/blog") ? "page" : undefined}>Writing</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <ul>
+        {profile.contact.map(({ label, href }) => <li><a href={href}>{label}</a></li>)}
+      </ul>
+    </footer>
+  </body>
+</html>

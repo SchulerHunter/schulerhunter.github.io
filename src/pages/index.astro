@@ -1,0 +1,74 @@
+---
+import Base from "../layouts/Base.astro";
+import KnowledgeGraph from "../components/KnowledgeGraph.astro";
+import { stages } from "../data/explainer";
+import { profile } from "../data/profile";
+import { formatDate, getPosts } from "../lib/posts";
+
+const [latest] = await getPosts();
+const company = "Seltz";
+const companyAt = profile.summary.indexOf(company);
+---
+
+<Base description={profile.summary}>
+  <section class="hero">
+    <div class="hero-text">
+      <h1>{profile.name}</h1>
+      <p class="headline">{profile.headline}</p>
+      <p class="meta">{profile.location}</p>
+      <p class="summary">
+        {
+          companyAt >= 0 ? (
+            <>
+              {profile.summary.slice(0, companyAt)}
+              <a href={profile.companyUrl}>{company}</a>
+              {profile.summary.slice(companyAt + company.length)}
+            </>
+          ) : (
+            profile.summary
+          )
+        }
+      </p>
+    </div>
+    <KnowledgeGraph />
+  </section>
+
+  <section>
+    <h2 class="section-label">What you're looking at</h2>
+    <dl class="stages">
+      {
+        stages.map((stage) => (
+          <div>
+            <dt>{stage.label}</dt>
+            <dd>{stage.text}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  {
+    latest && (
+      <section>
+        <h2 class="section-label">Writing</h2>
+        <p class="latest">
+          <time class="meta" datetime={latest.data.pubDate.toISOString()}>
+            {formatDate(latest.data.pubDate)}
+          </time>
+          <a href={`/blog/${latest.id}/`}>{latest.data.title}</a>
+        </p>
+        <p>
+          <a href="/blog/">All writing →</a>
+        </p>
+      </section>
+    )
+  }
+
+  <section>
+    <h2 class="section-label">More</h2>
+    <ul class="home-links">
+      <li><a href="/about/">About</a></li>
+      {profile.contact.map(({ label, href, text }) => <li><span class="meta">{label}</span> <a href={href}>{text}</a></li>)}
+    </ul>
+  </section>
+</Base>

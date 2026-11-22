@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://hunterthe.dev/sitemap-index.xml

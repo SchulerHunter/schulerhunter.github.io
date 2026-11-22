@@ -1,0 +1,20 @@
+---
+import fraunces from "@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url";
+import inter from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import mono from "@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url";
+
+const faces = [
+  { family: "Fraunces", url: fraunces },
+  { family: "Inter", url: inter },
+  { family: "JetBrains Mono", url: mono },
+];
+const css = faces
+  .map(
+    ({ family, url }) =>
+      `@font-face{font-family:"${family}";src:url(${url}) format("woff2");font-weight:100 900;font-display:swap}`,
+  )
+  .join("");
+---
+
+{faces.map(({ url }) => <link rel="preload" href={url} as="font" type="font/woff2" crossorigin />)}
+<style is:inline set:html={css} />

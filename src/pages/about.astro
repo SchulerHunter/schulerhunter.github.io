@@ -1,0 +1,57 @@
+---
+import Base from "../layouts/Base.astro";
+import { profile } from "../data/profile";
+---
+
+<Base title="About" description={profile.summary}>
+  <h1 class="page-title">About</h1>
+  <section class="about">
+    {profile.about.map((paragraph) => <p>{paragraph}</p>)}
+  </section>
+
+  <section>
+    <h2 class="section-label">Experience</h2>
+    <ol class="timeline">
+      {
+        profile.experience.map((job) => (
+          <li>
+            <h3>{job.company}</h3>
+            <p class="role">{job.role}</p>
+            <p class="meta">
+              {job.dates} · {job.location}
+            </p>
+            <ul>
+              {job.highlights.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+      <li class="earlier-label">Earlier</li>
+      {
+        profile.earlierExperience.map((job) => (
+          <li class="earlier">
+            <h3>
+              {job.role}, {job.company}
+            </h3>
+            <p>{job.summary}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section>
+    <h2 class="section-label">Education</h2>
+    {
+      profile.education.map((school) => (
+        <article class="school">
+          <h3>{school.school}</h3>
+          <p class="role">{school.degree}</p>
+          {school.description && <p>{school.description}</p>}
+        </article>
+      ))
+    }
+  </section>
+</Base>
