@@ -219,18 +219,15 @@ const height = 1 / SCALE_H;
   const APPEAR = 0.6;
   const PAUSE = 0.8;
   const QUERY_TRAVEL = 1.2;
-  /** Greedy routing toward the hidden query point; each step may look two hops ahead to cross between clusters. */
-  const MAX_ROUTE_HOPS = 6;
+  /** Size of the HNSW layer-0 search's result set (ef). */
+  const EF = 8;
   const ROUTE_HOP = 0.16;
-  /** Local expansion around where the route stops: hops explored, nodes kept per hop and time per hop. */
-  const EXPAND_HOPS = 2;
-  const EXPAND_BEAM = 6;
-  const EXPAND_STEP = 0.22;
+  /** Time each probed edge takes to grow. */
+  const PROBE_TIME = 0.22;
   const K_RESULTS = 5;
   const K_RESULTS_MOBILE = 4;
-  /** The hidden query point lies within QUERY_SPREAD cluster spreads of a node this many hops from the entry. */
+  /** The hidden query point lies within QUERY_SPREAD cluster spreads of a node at least this many hops from the entry. */
   const QUERY_HOPS_MIN = 3;
-  const QUERY_HOPS_MAX = 8;
   const QUERY_SPREAD = 0.5;
   const AFTERGLOW = 0.6;
   const PATH_HOLD = 1;
@@ -309,6 +306,7 @@ const height = 1 / SCALE_H;
       return f * f * (3 - 2 * f);
     };
     const ease = (u: number) => (u < 0.5 ? 4 * u ** 3 : 1 - (2 - 2 * u) ** 3 / 2);
+    const unease = (y: number) => (y < 0.5 ? Math.cbrt(y / 4) : 1 - Math.cbrt(2 - 2 * y) / 2);
     const gap = (p: Point, q: Point) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
 
     let ink = "";
@@ -364,11 +362,35 @@ const height = 1 / SCALE_H;
       depth: 1,
       now: p,
     });
-    const linked = (a: Node, b: Node) => a.links.some((l) => other(l, a) === b);
     const live = (n: Node) => n.links.filter((l) => !l.retract).map((l) => other(l, n));
     const growing = (n: Node) => n.links.filter((l) => l.grow?.from === n && clock < l.grow.at + l.grow.time).length;
+    const origin = (l: Link) => l.grow?.from ?? l.a;
+    /** The drawn part of an edge, as fractions of the way from its origin. */
+    const span = (l: Link): [number, number] => {
+      const extent = (t: number) => (l.grow ? ease(clamp((t - l.grow.at) / l.grow.time)) : 1);
+      const end = extent(l.retract ? Math.min(clock, l.retract.at) : clock);
+      if (!l.retract) return [0, end];
+      const u = ease(clamp((clock - l.retract.at) / l.retract.time));
+      return l.retract.from === origin(l) ? [end * u, end] : [0, end * (1 - u)];
+    };
+    /** Cancels a retract, regrowing the edge from its kept end at its current length. */
+    const revive = (l: Link) => {
+      const { from, at } = l.retract!;
+      if (clock >= at) {
+        const [start, end] = span(l);
+        const keep = other(l, from);
+        const time = built ? EDGE_GROW_TIME : BUILD_GROW_TIME;
+        l.grow = { from: keep, at: clock - unease(keep === origin(l) ? end : 1 - start) * time, time };
+      }
+      delete l.retract;
+    };
     const link = (a: Node, b: Node) => {
-      if (a === b || linked(a, b)) return;
+      if (a === b) return;
+      const existing = a.links.find((l) => other(l, a) === b);
+      if (existing) {
+        if (existing.retract) revive(existing);
+        return;
+      }
       const l: Link = { a, b };
       if (!still) {
         const at = Math.max(clock, a.insertAt + ARRIVE_TIME) + growing(a) * (built ? EDGE_GROW_STAGGER : BUILD_GROW_STAGGER);
@@ -430,7 +452,7 @@ const height = 1 / SCALE_H;
       const alive = nodes.filter((n) => !n.leaving);
       for (const x of around) {
         if (x.leaving) continue;
-        const picks = alive.filter((n) => n !== x && !linked(x, n) && live(n).length < M_MAX).sort(nearestFirst(x));
+        const picks = alive.filter((n) => n !== x && !live(x).includes(n) && live(n).length < M_MAX).sort(nearestFirst(x));
         picks.slice(0, Math.max(0, M - live(x).length)).forEach((n) => link(x, n));
       }
       repair(alive, net);
@@ -472,49 +494,55 @@ const height = 1 / SCALE_H;
       const ready = nodes.filter(settled);
       if (!ready.length) return null;
       const entry = ready.reduce((best, n) => (Math.hypot(n.sx - from.x, n.sy - from.y) < Math.hypot(best.sx - from.x, best.sy - from.y) ? n : best));
-      // The hidden query point sits near a node a few hops away, so the greedy route has somewhere to travel.
       const depth = new Map([[entry, 0]]);
       for (const queue = [entry]; queue.length; ) {
         const a = queue.shift()!;
-        if (depth.get(a)! < QUERY_HOPS_MAX) for (const b of neighbours(a)) if (!depth.has(b) && depth.set(b, depth.get(a)! + 1)) queue.push(b);
+        for (const b of neighbours(a)) if (!depth.has(b) && depth.set(b, depth.get(a)! + 1)) queue.push(b);
       }
       const far = [...depth].filter(([, d]) => d >= QUERY_HOPS_MIN).map(([n]) => n);
       const anchor = far.length ? far[Math.floor(rand() * far.length)] : entry;
       const spread = CLUSTER_SPREAD * QUERY_SPREAD;
       const goal = { x: anchor.x + gauss() * spread, y: anchor.y + gauss() * spread, z: anchor.z + gauss() * spread };
-      const closer = (p: Node, q: Node) => gap(p, goal) < gap(q, goal);
+      const nearer = (p: Node, q: Node) => gap(p, goal) - gap(q, goal);
 
-      const route = [entry];
-      for (let hop = 0; hop < MAX_ROUTE_HOPS; hop++) {
-        const here = route[route.length - 1];
-        let best = here;
-        let via: Node | null = null;
-        for (const a of neighbours(here)) {
-          if (closer(a, best)) [best, via] = [a, null];
-          for (const b of neighbours(a)) if (closer(b, best) && !route.includes(b)) [best, via] = [b, a];
+      // HNSW layer-0 search: `found` holds the EF nearest nodes seen, nearest first.
+      const parent = new Map<Node, Node | null>([[entry, null]]);
+      const expanded: Node[] = [];
+      const candidates = [entry];
+      const found = [entry];
+      while (candidates.length) {
+        const c = candidates.sort(nearer).shift()!;
+        if (found.length >= EF && nearer(c, found[found.length - 1]) > 0) break;
+        expanded.push(c);
+        for (const x of neighbours(c)) {
+          if (parent.has(x)) continue;
+          parent.set(x, c);
+          if (found.length < EF || nearer(x, found[found.length - 1]) < 0) {
+            candidates.push(x);
+            found.push(x);
+            found.sort(nearer);
+            if (found.length > EF) found.pop();
+          }
         }
-        if (best === here) break;
-        if (via) route.push(via);
-        route.push(best);
       }
 
+      const route: Node[] = [];
+      for (let n: Node | null = found[0]; n; n = parent.get(n) ?? null) route.unshift(n);
+      // Expansions between two route nodes share that hop's time; those after the route's end take half a hop each.
+      const knots = route.map((n) => expanded.indexOf(n));
+      const expandedAt = (j: number) => {
+        const i = knots.findLastIndex((k) => k <= j);
+        const next = knots[i + 1];
+        return QUERY_TRAVEL + (i + (j - knots[i]) / (next === undefined ? 2 : next - knots[i])) * ROUTE_HOP;
+      };
+      const onRoute = new Set(route);
+      const examined = [...parent].flatMap(([node, from]) =>
+        from && !onRoute.has(node) ? [{ node, from, at: expandedAt(expanded.indexOf(from)) }] : [],
+      );
+
+      const targets = found.slice(0, target === NODES_SMALL ? K_RESULTS_MOBILE : K_RESULTS);
       const routeEnd = QUERY_TRAVEL + (route.length - 1) * ROUTE_HOP;
-      const examined: Search["examined"] = [];
-      const seen = new Set(route);
-      let frontier = [route[route.length - 1]];
-      for (let level = 0; level < EXPAND_HOPS; level++) {
-        const next = frontier
-          .flatMap((a) => neighbours(a).map((node) => ({ node, from: a })))
-          .filter(({ node }) => !seen.has(node) && seen.add(node))
-          .sort((p, q) => gap(p.node, goal) - gap(q.node, goal))
-          .slice(0, EXPAND_BEAM);
-        next.forEach((e) => examined.push({ ...e, at: routeEnd + level * EXPAND_STEP }));
-        frontier = next.map((e) => e.node);
-      }
-
-      const k = target === NODES_SMALL ? K_RESULTS_MOBILE : K_RESULTS;
-      const targets = [...route.slice(-3), ...examined.map((e) => e.node)].sort((p, q) => gap(p, goal) - gap(q, goal)).slice(0, k);
-      const active = routeEnd + EXPAND_HOPS * EXPAND_STEP + 0.1;
+      const active = Math.max(routeEnd, ...examined.map((e) => e.at)) + PROBE_TIME + 0.1;
       const depart = targets.map((_, i) => active + RESULT_DELAY + i * RESULT_STAGGER);
       return { route, examined, targets, active, depart, end: depart[depart.length - 1] + RETURN_TRAVEL + PULSE };
     };
@@ -608,18 +636,10 @@ const height = 1 / SCALE_H;
       ctx.strokeStyle = ink;
       // Edges grow out from their new endpoint; a retracting edge shrinks from the dropping side, from however far it had grown.
       const ends = (l: Link): [Flat, Flat] => {
-        const origin = l.grow?.from ?? l.a;
-        const p = at(origin);
-        const q = at(other(l, origin));
+        const p = at(origin(l));
+        const q = at(other(l, origin(l)));
         const along = (u: number): Flat => ({ x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u });
-        const extent = (t: number) => (l.grow ? ease(clamp((t - l.grow.at) / l.grow.time)) : 1);
-        let start = 0;
-        let end = extent(l.retract ? Math.min(clock, l.retract.at) : clock);
-        if (l.retract) {
-          const u = ease(clamp((clock - l.retract.at) / l.retract.time));
-          if (l.retract.from === origin) start = end * u;
-          else end *= 1 - u;
-        }
+        const [start, end] = span(l);
         return [along(start), along(end)];
       };
       edgeLevels.forEach((group, k) => {
@@ -678,8 +698,8 @@ const height = 1 / SCALE_H;
         ctx.fill();
       });
       for (const e of ev.examined) {
-        const u = (t - e.at) / EXPAND_STEP;
-        const alpha = 0.35 * (1 - smooth((u - 1) / (AFTERGLOW / EXPAND_STEP))) * fadeOut;
+        const u = (t - e.at) / PROBE_TIME;
+        const alpha = 0.35 * (1 - smooth((u - 1) / (AFTERGLOW / PROBE_TIME))) * fadeOut;
         if (u <= 0 || alpha <= 0.01) continue;
         ctx.globalAlpha = alpha;
         ctx.beginPath();
